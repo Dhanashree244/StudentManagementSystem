@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Information Management System</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container header-content">
+      <div>
+        <p class="eyebrow">STUDENT PORTAL</p>
+        <h1>Student Management System</h1>
+        <p class="subtitle">Manage student records in one place.</p>
+      </div>
+      <span class="status-badge" id="dbStatus">Checking connection...</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="stats-grid">
+      <article class="stat-card">
+        <p>Total Students</p>
+        <h2 id="totalStudents">0</h2>
+      </article>
+      <article class="stat-card">
+        <p>Database Status</p>
+        <h2 id="connectionLabel">Checking...</h2>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">STUDENT DETAILS</p>
+          <h2 id="formTitle">Add New Student</h2>
+        </div>
+      </div>
+
+      <form id="studentForm">
+        <input type="hidden" id="recordId">
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="studentId">Student ID *</label>
+            <input id="studentId" name="studentId" placeholder="e.g. ST101" required>
+          </div>
+
+          <div class="field">
+            <label for="name">Full Name *</label>
+            <input id="name" name="name" placeholder="Enter full name" required>
+          </div>
+
+          <div class="field">
+            <label for="email">Email Address *</label>
+            <input id="email" name="email" type="email"
+              placeholder="student@example.com" required>
+          </div>
+
+          <div class="field">
+            <label for="department">Department *</label>
+            <input id="department" name="department"
+              placeholder="e.g. Computer Science" required>
+          </div>
+
+          <div class="field">
+            <label for="semester">Semester *</label>
+            <select id="semester" name="semester" required>
+              <option value="">Select semester</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+              <option value="9">Semester 9</option>
+              <option value="10">Semester 10</option>
+              <option value="11">Semester 11</option>
+              <option value="12">Semester 12</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="contact">Contact Number *</label>
+            <input id="contact" name="contact" type="tel"
+              inputmode="numeric" pattern="[0-9]{10}"
+              maxlength="10" placeholder="10-digit number" required>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="button primary" type="submit" id="submitButton">
+            Add Student
+          </button>
+          <button class="button secondary hidden" type="button" id="cancelButton">
+            Cancel Edit
+          </button>
+        </div>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">RECORDS</p>
+          <h2>Student List</h2>
+          <p class="subtitle">Search, edit or delete student records.</p>
+        </div>
+        <button class="button secondary" id="refreshButton" type="button">
+          Refresh
+        </button>
+      </div>
+
+      <div class="search-row">
+        <input id="searchInput" type="search"
+          placeholder="Search by ID, name, email or department">
+        <button class="button primary" id="searchButton" type="button">
+          Search
+        </button>
+        <button class="button secondary" id="clearSearchButton" type="button">
+          Show All
+        </button>
+      </div>
+
+      <p id="resultMessage" class="result-message"></p>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Student ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Department</th>
+              <th>Semester</th>
+              <th>Contact</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="studentTable">
+            <tr>
+              <td colspan="7">Loading student records...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      Student Information Management System · Three-Tier Cloud Architecture
+    </footer>
+  </main>
+</body>
+</html>
