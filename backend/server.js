@@ -70,6 +70,7 @@ app.get("/api/students", async (req, res) => {
       data: students
     });
   } catch (error) {
+    console.error("Get students error:", error.message);
     res.status(500).json({
       success: false,
       message: "Unable to retrieve students."
@@ -107,6 +108,7 @@ app.get("/api/students/search", async (req, res) => {
       data: students
     });
   } catch (error) {
+    console.error("Search error:", error.message);
     res.status(500).json({
       success: false,
       message: "Search failed."
@@ -127,13 +129,18 @@ app.post("/api/students", async (req, res) => {
     } = req.body;
 
     if (
-      !studentId?.trim() ||
-      !name?.trim() ||
-      !email?.trim() ||
-      !department?.trim() ||
+      typeof studentId !== "string" ||
+      !studentId.trim() ||
+      typeof name !== "string" ||
+      !name.trim() ||
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof department !== "string" ||
+      !department.trim() ||
       semester === undefined ||
       semester === "" ||
-      !contact?.trim()
+      typeof contact !== "string" ||
+      !contact.trim()
     ) {
       return res.status(400).json({
         success: false,
@@ -141,20 +148,34 @@ app.post("/api/students", async (req, res) => {
       });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const cleanStudentId = studentId.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
         message: "Enter a valid email address."
       });
     }
 
+    const existingStudent = await Student.findOne({
+      studentId: cleanStudentId
+    });
+
+    if (existingStudent) {
+      return res.status(409).json({
+        success: false,
+        message: "This Student ID already exists."
+      });
+    }
+
     const student = await Student.create({
-      studentId,
-      name,
-      email,
-      department,
+      studentId: cleanStudentId,
+      name: name.trim(),
+      email: cleanEmail,
+      department: department.trim(),
       semester: Number(semester),
-      contact
+      contact: contact.trim()
     });
 
     res.status(201).json({
@@ -164,12 +185,30 @@ app.post("/api/students", async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      const duplicateFields = Object.keys(error.keyPattern || {});
+      console.error("Duplicate key fields:", duplicateFields);
+
+      if (duplicateFields.includes("studentId")) {
+        return res.status(409).json({
+          success: false,
+          message: "This Student ID already exists."
+        });
+      }
+
+      if (duplicateFields.includes("email")) {
+        return res.status(409).json({
+          success: false,
+          message: "This email already exists."
+        });
+      }
+
       return res.status(409).json({
         success: false,
-        message: "This Student ID already exists."
+        message: "A duplicate value exists in the database."
       });
     }
 
+    console.error("Add student error:", error.message);
     res.status(400).json({
       success: false,
       message: "Could not add student. Check the entered details."
@@ -198,6 +237,7 @@ app.get("/api/students/:id", async (req, res) => {
 
     res.json({ success: true, data: student });
   } catch (error) {
+    console.error("Get student error:", error.message);
     res.status(500).json({
       success: false,
       message: "Unable to retrieve student."
@@ -235,18 +275,22 @@ app.put("/api/students/:id", async (req, res) => {
       }
     }
 
-    if (updates.semester !== undefined) {
-      updates.semester = Number(updates.semester);
+    if (updates.email !== undefined) {
+      if (
+        typeof updates.email !== "string" ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.email)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Enter a valid email address."
+        });
+      }
+
+      updates.email = updates.email.toLowerCase();
     }
 
-    if (
-      updates.email &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.email)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Enter a valid email address."
-      });
+    if (updates.semester !== undefined) {
+      updates.semester = Number(updates.semester);
     }
 
     const student = await Student.findByIdAndUpdate(
@@ -269,12 +313,18 @@ app.put("/api/students/:id", async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      const duplicateFields = Object.keys(error.keyPattern || {});
+      console.error("Update duplicate key fields:", duplicateFields);
+
       return res.status(409).json({
         success: false,
-        message: "This Student ID already exists."
+        message: duplicateFields.includes("studentId")
+          ? "This Student ID already exists."
+          : "A duplicate value exists in the database."
       });
     }
 
+    console.error("Update student error:", error.message);
     res.status(400).json({
       success: false,
       message: "Could not update student."
@@ -306,6 +356,7 @@ app.delete("/api/students/:id", async (req, res) => {
       message: "Student deleted successfully."
     });
   } catch (error) {
+    console.error("Delete student error:", error.message);
     res.status(500).json({
       success: false,
       message: "Could not delete student."
@@ -319,11 +370,11 @@ const startServer = async () => {
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Backend startup failed.");
+    console.error("Backend startup failed:", error.message);
     process.exit(1);
   }
 };
