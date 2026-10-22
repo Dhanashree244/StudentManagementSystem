@@ -350,9 +350,8 @@ console.log("Stored session IDs:", [...sessions.keys()]);
   }
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`MCP server listening locally on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`MCP server listening on port ${PORT}`);
   console.log("Project directory:", PROJECT_DIR);
-  console.log("MCP endpoint: http://localhost:" + PORT + "/mcp");
-  console.log("Keep this server local until secure remote access is configured.");
+  console.log("MCP endpoint: /mcp");
 });
