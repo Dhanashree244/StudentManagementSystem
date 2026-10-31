@@ -1,17 +1,35 @@
-
 * {
   box-sizing: border-box;
 }
 
 :root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --violet: #7c3aed;
+  --bg: #f5f7ff;
+  --card: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --tint: #eef2ff;
+  --success: #16a34a;
+  --success-text: #15803d;
+  --danger: #dc2626;
+  --info: #2563eb;
+  --info-hover: #1d4ed8;
+  --radius: 14px;
+  --shadow: 0 4px 18px rgba(79, 70, 229, 0.08), 0 1px 3px rgba(30, 41, 59, 0.06);
+
   font-family: Arial, Helvetica, sans-serif;
-  color: #243247;
-  background: #f3f9f5;
+  color: var(--text);
+  background: var(--bg);
 }
 
 body {
   margin: 0;
   line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .container {
@@ -20,9 +38,11 @@ body {
 }
 
 .topbar {
-  background: #ffffff;
-  border-bottom: 1px solid #16a34a;
+  background: linear-gradient(120deg, var(--primary) 0%, var(--violet) 100%);
+  color: #ffffff;
+  border-bottom: 0;
   padding: 28px 0;
+  box-shadow: 0 6px 24px rgba(79, 70, 229, 0.25);
 }
 
 .header-content,
@@ -42,34 +62,63 @@ h1, h2, p {
 h1 {
   margin-bottom: 5px;
   font-size: clamp(24px, 4vw, 32px);
+  color: #ffffff;
 }
 
 h2 {
   margin-bottom: 6px;
   font-size: 21px;
+  color: var(--text);
 }
 
 .eyebrow {
-  color: #15803d;
+  color: var(--primary);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.2px;
   margin-bottom: 7px;
 }
 
+.topbar .eyebrow {
+  color: #e0e7ff;
+}
+
 .subtitle {
-  color: #718096;
+  color: var(--muted);
   margin-bottom: 0;
 }
 
+.topbar .subtitle {
+  color: #e0e7ff;
+}
+
+/* Status badge. The page script only changes the badge text (no state
+   classes), so the default look is a neutral glass pill that reads well for
+   every state. The .connected / .unavailable rules below give green / red
+   as soon as a state class is toggled on the element. */
 .status-badge {
   display: inline-block;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.status-badge.connected {
   background: #dcfce7;
   color: #166534;
-  border-radius: 20px;
-  padding: 8px 13px;
-  font-size: 13px;
-  white-space: nowrap;
+  border-color: var(--success);
+}
+
+.status-badge.unavailable {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: var(--danger);
 }
 
 .stats-grid {
@@ -81,21 +130,26 @@ h2 {
 
 .stat-card,
 .panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 22px;
-  box-shadow: 0 3px 12px rgba(30, 50, 80, 0.04);
+  box-shadow: var(--shadow);
+}
+
+.stat-card {
+  border-top: 3px solid var(--primary);
 }
 
 .stat-card p {
-  color: #718096;
+  color: var(--muted);
   margin-bottom: 8px;
 }
 
 .stat-card h2 {
   font-size: 28px;
   margin-bottom: 0;
+  color: var(--primary);
 }
 
 .panel {
@@ -121,24 +175,31 @@ h2 {
 label {
   font-size: 14px;
   font-weight: 600;
+  color: var(--text);
 }
 
 input,
 select {
   width: 100%;
   min-width: 0;
-  border: 1px solid #ccd5e1;
-  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
   padding: 11px 12px;
   background: #ffffff;
-  color: #243247;
+  color: var(--text);
   font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input::placeholder {
+  color: #94a3b8;
 }
 
 input:focus,
 select:focus {
-  outline: 2px solid #bbf7d0;
-  border-color: #16a34a;
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
 }
 
 .form-actions {
@@ -147,12 +208,30 @@ select:focus {
 }
 
 .button {
-  border: 0;
-  border-radius: 7px;
-  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 11px 18px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.button:hover:not(:disabled),
+.small-button:hover {
+  transform: translateY(-2px);
+}
+
+.button:active:not(:disabled),
+.small-button:active {
+  transform: translateY(0);
+}
+
+.button:focus-visible,
+.small-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.35);
 }
 
 .button:disabled {
@@ -160,24 +239,28 @@ select:focus {
   cursor: not-allowed;
 }
 
-/* White text on #16a34a is only ~3.3:1, so the button uses the darker
-   #15803d (~5:1) and the hover goes darker still. */
 .primary {
-  background: #15803d;
-  color: white;
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
 }
 
-.primary:hover {
-  background: #166534;
+.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
 }
 
 .secondary {
-  background: #edf2f7;
-  color: #34445b;
+  background: transparent;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
-.secondary:hover {
-  background: #e1e8f0;
+.secondary:hover:not(:disabled) {
+  background: var(--tint);
+  color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.15);
 }
 
 .message,
@@ -185,14 +268,15 @@ select:focus {
   font-size: 14px;
   margin: 12px 0 0;
   overflow-wrap: anywhere;
+  color: var(--muted);
 }
 
 .message.success {
-  color: #187348;
+  color: var(--success-text);
 }
 
 .message.error {
-  color: #b42318;
+  color: var(--danger);
 }
 
 .search-row {
@@ -207,6 +291,8 @@ select:focus {
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 table {
@@ -217,22 +303,36 @@ table {
 }
 
 th, td {
-  padding: 13px 12px;
-  border-bottom: 1px solid #e8edf3;
+  padding: 14px 14px;
+  border-bottom: 1px solid #edf0f7;
   vertical-align: middle;
 }
 
 th {
-  background: #f0fdf4;
-  color: #166534;
-  border-bottom-color: #16a34a;
+  background: var(--tint);
+  color: #3730a3;
+  border-bottom: 2px solid #c7d2fe;
   font-size: 12px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 td {
   overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+tbody tr:nth-child(even) td {
+  background: #f8faff;
+}
+
+tbody tr:hover td {
+  background: #e0e7ff;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .table-action {
@@ -242,20 +342,32 @@ td {
 
 .small-button {
   border: 0;
-  border-radius: 5px;
-  padding: 7px 10px;
+  border-radius: 8px;
+  padding: 7px 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .edit-button {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--info);
+  color: #ffffff;
+}
+
+.edit-button:hover {
+  background: var(--info-hover);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
 .delete-button {
-  background: #fff0ef;
-  color: #b42318;
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.delete-button:hover {
+  background: #b91c1c;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
 }
 
 .hidden {
@@ -264,7 +376,7 @@ td {
 
 footer {
   text-align: center;
-  color: #718096;
+  color: var(--muted);
   font-size: 13px;
   padding: 8px 0 28px;
 }
@@ -304,5 +416,19 @@ footer {
 
   .form-actions {
     flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .small-button,
+  input,
+  select {
+    transition: none;
+  }
+
+  .button:hover:not(:disabled),
+  .small-button:hover {
+    transform: none;
   }
 }
