@@ -86,6 +86,13 @@
           </div>
 
           <div class="field">
+            <label for="admissionYear">Admission Year *</label>
+            <input id="admissionYear" name="admissionYear" type="number"
+              inputmode="numeric" min="1990" max="2100" step="1"
+              placeholder="e.g. 2024" required>
+          </div>
+
+          <div class="field">
             <label for="contact">Contact Number *</label>
             <input id="contact" name="contact" type="tel"
               inputmode="numeric" pattern="[0-9]{10}"
@@ -139,13 +146,14 @@
               <th>Email</th>
               <th>Department</th>
               <th>Semester</th>
+              <th>Admission Year</th>
               <th>Contact</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="studentTable">
             <tr>
-              <td colspan="7">Loading student records...</td>
+              <td colspan="8">Loading student records...</td>
             </tr>
           </tbody>
         </table>

@@ -24,6 +24,29 @@ app.use(
 );
 app.use(express.json({ limit: "100kb" }));
 
+// Admission year must be a whole year between MIN_ADMISSION_YEAR and next year.
+const MIN_ADMISSION_YEAR = 1990;
+
+function maxAdmissionYear() {
+  return new Date().getFullYear() + 1;
+}
+
+// Returns the year as an integer, or null when the value is not valid.
+function parseAdmissionYear(value) {
+  if (typeof value === "string") {
+    if (!/^\d{4}$/.test(value.trim())) return null;
+    value = Number(value.trim());
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value)) return null;
+  if (value < MIN_ADMISSION_YEAR || value > maxAdmissionYear()) return null;
+
+  return value;
+}
+
+const ADMISSION_YEAR_MESSAGE = () =>
+  `Enter a valid admission year (${MIN_ADMISSION_YEAR}-${maxAdmissionYear()}).`;
+
 const studentSchema = new mongoose.Schema(
   {
     studentId: {
@@ -53,6 +76,19 @@ const studentSchema = new mongoose.Schema(
       required: true,
       min: 1,
       max: 12
+    },
+    // Not marked required at schema level so records created before this
+    // field existed stay valid; the API requires it for new students.
+    admissionYear: {
+      type: Number,
+      min: MIN_ADMISSION_YEAR,
+      validate: {
+        validator: value =>
+          value === undefined ||
+          value === null ||
+          (Number.isInteger(value) && value <= maxAdmissionYear()),
+        message: "Admission year must be a whole year that is not in the far future."
+      }
     },
     contact: {
       type: String,
@@ -153,6 +189,7 @@ app.post("/api/students", async (req, res) => {
       email,
       department,
       semester,
+      admissionYear,
       contact
     } = req.body;
 
@@ -167,12 +204,24 @@ app.post("/api/students", async (req, res) => {
       !department.trim() ||
       semester === undefined ||
       semester === "" ||
+      admissionYear === undefined ||
+      admissionYear === null ||
+      admissionYear === "" ||
       typeof contact !== "string" ||
       !contact.trim()
     ) {
       return res.status(400).json({
         success: false,
         message: "Please complete all student fields."
+      });
+    }
+
+    const cleanAdmissionYear = parseAdmissionYear(admissionYear);
+
+    if (cleanAdmissionYear === null) {
+      return res.status(400).json({
+        success: false,
+        message: ADMISSION_YEAR_MESSAGE()
       });
     }
 
@@ -203,6 +252,7 @@ app.post("/api/students", async (req, res) => {
       email: cleanEmail,
       department: department.trim(),
       semester: Number(semester),
+      admissionYear: cleanAdmissionYear,
       contact: contact.trim()
     });
 
@@ -289,6 +339,7 @@ app.put("/api/students/:id", async (req, res) => {
       "email",
       "department",
       "semester",
+      "admissionYear",
       "contact"
     ];
 
@@ -319,6 +370,19 @@ app.put("/api/students/:id", async (req, res) => {
 
     if (updates.semester !== undefined) {
       updates.semester = Number(updates.semester);
+    }
+
+    if (updates.admissionYear !== undefined) {
+      const cleanAdmissionYear = parseAdmissionYear(updates.admissionYear);
+
+      if (cleanAdmissionYear === null) {
+        return res.status(400).json({
+          success: false,
+          message: ADMISSION_YEAR_MESSAGE()
+        });
+      }
+
+      updates.admissionYear = cleanAdmissionYear;
     }
 
     const student = await Student.findByIdAndUpdate(

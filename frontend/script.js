@@ -5,6 +5,9 @@ const API_BASE_URL = (
 const API_URL = `${API_BASE_URL}/api/students`;
 // Render's free plan puts the backend to sleep; the first request can be slow.
 const REQUEST_TIMEOUT_MS = 70000;
+// Number of columns in the student table (used for full-width message rows).
+const TABLE_COLUMNS = 8;
+const MIN_ADMISSION_YEAR = 1990;
 
 const studentForm = document.getElementById("studentForm");
 const studentTable = document.getElementById("studentTable");
@@ -69,7 +72,7 @@ async function loadStudents(searchTerm = "") {
 
   const loadingRow = document.createElement("tr");
   const loadingCell = makeCell("Loading student records...");
-  loadingCell.colSpan = 7;
+  loadingCell.colSpan = TABLE_COLUMNS;
   loadingRow.appendChild(loadingCell);
   studentTable.appendChild(loadingRow);
   dbStatus.textContent = "Connecting...";
@@ -99,7 +102,7 @@ async function loadStudents(searchTerm = "") {
           ? "No matching students found."
           : "No students yet. Add your first student above."
       );
-      cell.colSpan = 7;
+      cell.colSpan = TABLE_COLUMNS;
       row.appendChild(cell);
       studentTable.appendChild(row);
       return;
@@ -113,6 +116,8 @@ async function loadStudents(searchTerm = "") {
       row.appendChild(makeCell(student.email));
       row.appendChild(makeCell(student.department));
       row.appendChild(makeCell(student.semester));
+      // Records created before this field existed have no admission year.
+      row.appendChild(makeCell(student.admissionYear ?? "—"));
       row.appendChild(makeCell(student.contact));
 
       const actionCell = document.createElement("td");
@@ -149,7 +154,7 @@ async function loadStudents(searchTerm = "") {
     const cell = makeCell(
       "Cannot load records. Check that the backend is running."
     );
-    cell.colSpan = 7;
+    cell.colSpan = TABLE_COLUMNS;
     row.appendChild(cell);
     studentTable.appendChild(row);
 
@@ -167,6 +172,7 @@ studentForm.addEventListener("submit", async (event) => {
     email: document.getElementById("email").value.trim(),
     department: document.getElementById("department").value.trim(),
     semester: Number(document.getElementById("semester").value),
+    admissionYear: Number(document.getElementById("admissionYear").value),
     contact: document.getElementById("contact").value.trim()
   };
 
@@ -176,9 +182,23 @@ studentForm.addEventListener("submit", async (event) => {
     !student.email ||
     !student.department ||
     !student.semester ||
+    !student.admissionYear ||
     !student.contact
   ) {
     showMessage("Please complete all fields.", "error");
+    return;
+  }
+
+  const maxYear = new Date().getFullYear() + 1;
+  if (
+    !Number.isInteger(student.admissionYear) ||
+    student.admissionYear < MIN_ADMISSION_YEAR ||
+    student.admissionYear > maxYear
+  ) {
+    showMessage(
+      `Enter a valid admission year (${MIN_ADMISSION_YEAR}-${maxYear}).`,
+      "error"
+    );
     return;
   }
 
@@ -227,6 +247,8 @@ function startEditing(student) {
   document.getElementById("email").value = student.email || "";
   document.getElementById("department").value = student.department || "";
   document.getElementById("semester").value = String(student.semester || "");
+  document.getElementById("admissionYear").value =
+    student.admissionYear ? String(student.admissionYear) : "";
   document.getElementById("contact").value = student.contact || "";
 
   formTitle.textContent = "Edit Student Details";
