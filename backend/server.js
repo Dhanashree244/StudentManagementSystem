@@ -8,8 +8,21 @@ const connectDB = require("./db");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// CORS_ORIGIN = comma-separated allowed origins (e.g. your Vercel URL).
+// If it is not set, every origin is allowed (handy for local development).
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map(origin => origin.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+app.use(
+  cors(
+    allowedOrigins.length
+      ? { origin: allowedOrigins }
+      : undefined
+  )
+);
+app.use(express.json({ limit: "100kb" }));
 
 const studentSchema = new mongoose.Schema(
   {
@@ -51,6 +64,21 @@ const studentSchema = new mongoose.Schema(
 );
 
 const Student = mongoose.model("Student", studentSchema);
+
+// Health check used by Render and by the students MCP server.
+// `commit` is the git commit that is currently deployed (Render sets
+// RENDER_GIT_COMMIT), so a prompt can verify that its change is live.
+app.get("/health", (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+
+  res.status(dbConnected ? 200 : 503).json({
+    success: dbConnected,
+    status: dbConnected ? "ok" : "database-unavailable",
+    database: dbConnected ? "connected" : "disconnected",
+    commit: process.env.RENDER_GIT_COMMIT || null,
+    uptimeSeconds: Math.round(process.uptime())
+  });
+});
 
 app.get("/", (req, res) => {
   res.json({

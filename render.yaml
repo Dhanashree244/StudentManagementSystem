@@ -1,0 +1,89 @@
+# Render Blueprint - deploys the FOUR MCP servers (remote mode).
+#
+# The Student backend web service already exists on Render and is intentionally
+# NOT listed here (a Blueprint would try to overwrite an existing service with
+# the same name). See README step 3 for the two settings to change on it.
+#
+# Every `sync: false` value is asked for once in the Render dashboard.
+# Use the SAME MCP_AUTH_TOKEN for all four (min 32 chars).
+
+services:
+  - type: web
+    name: student-github-mcp
+    runtime: node
+    plan: free
+    rootDir: mcp-servers
+    buildCommand: npm ci
+    startCommand: node github-mcp.js
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - mcp-servers/**
+    envVars:
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: Dhanashree244/StudentManagementSystem
+      - key: GITHUB_BRANCH
+        value: main
+      - key: ALLOWED_WRITE_PREFIXES
+        value: frontend/,backend/,README.md,render.yaml
+
+  - type: web
+    name: student-vercel-mcp
+    runtime: node
+    plan: free
+    rootDir: mcp-servers
+    buildCommand: npm ci
+    startCommand: node vercel-mcp.js
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - mcp-servers/**
+    envVars:
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: VERCEL_TOKEN
+        sync: false
+      - key: VERCEL_PROJECT_ID
+        sync: false
+      - key: VERCEL_DEPLOY_HOOK_URL
+        sync: false
+
+  - type: web
+    name: student-render-mcp
+    runtime: node
+    plan: free
+    rootDir: mcp-servers
+    buildCommand: npm ci
+    startCommand: node render-mcp.js
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - mcp-servers/**
+    envVars:
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_SERVICE_ID
+        sync: false
+
+  - type: web
+    name: student-data-mcp
+    runtime: node
+    plan: free
+    rootDir: mcp-servers
+    buildCommand: npm ci
+    startCommand: node students-mcp.js
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - mcp-servers/**
+    envVars:
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: BACKEND_URL
+        value: https://student-management-backend-191c.onrender.com

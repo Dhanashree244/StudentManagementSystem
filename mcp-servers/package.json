@@ -1,0 +1,23 @@
+{
+  "name": "student-management-mcp-servers",
+  "version": "2.0.0",
+  "description": "MCP servers (GitHub, Vercel, Render, Students/MongoDB) so Claude can update every platform of the Student Management System from one prompt",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start:github": "node github-mcp.js",
+    "start:vercel": "node vercel-mcp.js",
+    "start:render": "node render-mcp.js",
+    "start:students": "node students-mcp.js",
+    "test": "node test/run-tests.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
+  }
+}

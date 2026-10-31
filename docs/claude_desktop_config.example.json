@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "student-github": { "command": "node", "args": ["C:/path/to/StudentManagementSystem/mcp-servers/github-mcp.js", "--stdio"] },
+    "student-vercel": { "command": "node", "args": ["C:/path/to/StudentManagementSystem/mcp-servers/vercel-mcp.js", "--stdio"] },
+    "student-render": { "command": "node", "args": ["C:/path/to/StudentManagementSystem/mcp-servers/render-mcp.js", "--stdio"] },
+    "student-data":   { "command": "node", "args": ["C:/path/to/StudentManagementSystem/mcp-servers/students-mcp.js", "--stdio"] }
+  }
+}

@@ -1,3 +1,17 @@
+# secrets - NEVER commit
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
-backend/.env
+# dependencies / build output
+node_modules/
 **/node_modules/
+.vercel/
+
+# editor / os / backups
+*.bak
+*.backup
+.DS_Store

@@ -1,5 +1,10 @@
 
-const API_URL = "https://student-management-backend-191c.onrender.com/api/students";
+const API_BASE_URL = (
+  (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || ""
+).replace(/\/$/, "");
+const API_URL = `${API_BASE_URL}/api/students`;
+// Render's free plan puts the backend to sleep; the first request can be slow.
+const REQUEST_TIMEOUT_MS = 70000;
 
 const studentForm = document.getElementById("studentForm");
 const studentTable = document.getElementById("studentTable");
@@ -33,7 +38,17 @@ function setConnection(connected) {
 }
 
 async function requestJSON(url, options = {}) {
-  const response = await fetch(url, options);
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+  } catch (error) {
+    throw new Error(
+      "Cannot reach the backend. If it was idle it may still be waking up - wait a few seconds and press Refresh."
+    );
+  }
 
   let result;
   try {
@@ -57,6 +72,7 @@ async function loadStudents(searchTerm = "") {
   loadingCell.colSpan = 7;
   loadingRow.appendChild(loadingCell);
   studentTable.appendChild(loadingRow);
+  dbStatus.textContent = "Connecting...";
 
   try {
     const url = searchTerm
