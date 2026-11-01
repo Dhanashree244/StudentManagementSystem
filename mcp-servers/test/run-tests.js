@@ -117,7 +117,7 @@ async function waitHealthy(port) {
       const expect = {
         github: ["github_list_files", "github_read_file", "github_commit_changes", "github_recent_commits"],
         vercel: ["vercel_list_deployments", "vercel_get_deployment", "vercel_redeploy", "vercel_wait_for_deployment"],
-        render: ["render_service_status", "render_list_deploys", "render_trigger_deploy", "render_wait_for_deploy", "render_list_env_keys", "render_set_env"],
+        render: ["render_service_status", "render_list_deploys", "render_trigger_deploy", "render_wait_for_deploy", "render_list_env_keys", "render_set_env", "render_create_service"],
         students: ["students_health", "students_verify_backend_commit", "students_list", "students_search", "students_add", "students_update", "students_delete"]
       };
       for (const [key, names] of Object.entries(expect)) {
@@ -287,6 +287,141 @@ async function waitHealthy(port) {
       assert.equal(r.isError, true);
     });
 
+    console.log("\nrender_create_service (copy the backend on Render)");
+    const createdBefore = () => mock.state.createdBodies.length;
+    await check("default call is a DRY RUN: previews, creates nothing, shows no secret values", async () => {
+      const before = createdBefore();
+      const r = await call(c.render, "render_create_service", { new_name: "student-backend-copy" });
+      const out = parse(r);
+      assert.equal(out.created, false);
+      assert.equal(out.dry_run, true);
+      assert.equal(out.new_service.root_dir, "backend");
+      assert.equal(out.new_service.plan, "free");
+      assert.equal(out.new_service.start_command, "node server.js");
+      assert.ok(out.env_vars_copied.includes("MONGODB_URI"));
+      assert.doesNotMatch(r.content[0].text, /pw-SECRET-VALUE/);
+      assert.equal(createdBefore(), before);
+    });
+    await check("real create without confirm_name is refused", async () => {
+      const r = await call(c.render, "render_create_service", { new_name: "student-backend-copy", dry_run: false });
+      assert.equal(r.isError, true);
+      assert.match(r.content[0].text, /confirm_name/);
+      assert.equal(createdBefore(), 0);
+    });
+    await check("real create with a wrong confirm_name is refused", async () => {
+      const r = await call(c.render, "render_create_service", { new_name: "student-backend-copy", dry_run: false, confirm_name: "other" });
+      assert.equal(r.isError, true);
+      assert.equal(createdBefore(), 0);
+    });
+    await check("same name as the original is refused", async () => {
+      const r = await call(c.render, "render_create_service", { new_name: "student-management-backend" });
+      assert.equal(r.isError, true);
+    });
+    await check("paid plan is refused unless allow_paid=true", async () => {
+      mock.state.sourcePlan = "starter";
+      try {
+        const dry = parse(await call(c.render, "render_create_service", { new_name: "student-backend-copy" }));
+        assert.match(dry.warnings.join(" "), /BILLED/);
+        const r = await call(c.render, "render_create_service", { new_name: "student-backend-copy", dry_run: false, confirm_name: "student-backend-copy" });
+        assert.equal(r.isError, true);
+        assert.match(r.content[0].text, /not free/);
+        assert.equal(createdBefore(), 0);
+      } finally {
+        mock.state.sourcePlan = "free";
+      }
+    });
+    await check("invalid names are rejected", async () => {
+      const r = await call(c.render, "render_create_service", { new_name: "Bad_Name" }).catch(() => ({ isError: true }));
+      assert.equal(r.isError, true);
+    });
+    await check("confirmed create sends the right body to Render (secret copied server-side only)", async () => {
+      const r = await call(c.render, "render_create_service", {
+        new_name: "student-backend-copy",
+        dry_run: false,
+        confirm_name: "student-backend-copy",
+        env_overrides: { CORS_ORIGIN: "https://copy.vercel.app" }
+      });
+      const out = parse(r);
+      assert.equal(out.created, true, JSON.stringify(out));
+      assert.equal(out.service.id, "srv-copy1");
+      assert.equal(out.deploy_id, "dep-new1");
+      assert.doesNotMatch(r.content[0].text, /pw-SECRET-VALUE/);
+
+      assert.equal(createdBefore(), 1);
+      const body = mock.state.createdBodies[0];
+      assert.equal(body.type, "web_service");
+      assert.equal(body.name, "student-backend-copy");
+      assert.equal(body.ownerId, "wrk-test");
+      assert.equal(body.repo, "https://github.com/o/r");
+      assert.equal(body.branch, "main");
+      assert.equal(body.rootDir, "backend");
+      assert.deepEqual(body.buildFilter, { paths: ["backend/**"], ignoredPaths: [] });
+      assert.deepEqual(body.serviceDetails, {
+        runtime: "node", plan: "free", region: "oregon", healthCheckPath: "/health",
+        envSpecificDetails: { buildCommand: "npm install", startCommand: "node server.js" }
+      });
+      const env = Object.fromEntries(body.envVars.map(e => [e.key, e.value]));
+      assert.equal(env.MONGODB_URI, "mongodb+srv://user:pw-SECRET-VALUE@cluster/db"); // really copied
+      assert.equal(env.CORS_ORIGIN, "https://copy.vercel.app");                       // override applied
+    });
+    await check("creating the same name again is refused (no duplicates)", async () => {
+      const r = await call(c.render, "render_create_service", { new_name: "student-backend-copy", dry_run: false, confirm_name: "student-backend-copy" });
+      assert.equal(r.isError, true);
+      assert.match(r.content[0].text, /already exists/);
+      assert.equal(createdBefore(), 1);
+    });
+    await check("the original service is untouched and the copy can be inspected via service_id", async () => {
+      assert.equal(parse(await call(c.render, "render_service_status")).name, "student-management-backend");
+      const copy = parse(await call(c.render, "render_service_status", { service_id: "srv-copy1" }));
+      assert.equal(copy.name, "student-backend-copy");
+      assert.equal(copy.url, "https://student-backend-copy.onrender.com");
+    });
+
+    console.log("\nrender_create_service - Docker containers");
+    const lastBody = () => mock.state.createdBodies[mock.state.createdBodies.length - 1];
+    await check("a Docker original is copied as Docker (dockerfile, context, command - no build/start)", async () => {
+      mock.state.sourceRuntime = "docker";
+      try {
+        const dry = parse(await call(c.render, "render_create_service", { new_name: "student-docker-copy" }));
+        assert.equal(dry.new_service.runtime, "docker");
+        assert.equal(dry.new_service.dockerfile_path, "./Dockerfile");
+        assert.equal(dry.new_service.build_command, null);
+        const out = parse(await call(c.render, "render_create_service", { new_name: "student-docker-copy", dry_run: false, confirm_name: "student-docker-copy" }));
+        assert.equal(out.created, true, JSON.stringify(out));
+        assert.deepEqual(lastBody().serviceDetails.envSpecificDetails, { dockerfilePath: "./Dockerfile", dockerContext: ".", dockerCommand: "node server.js" });
+        assert.equal(lastBody().serviceDetails.runtime, "docker");
+        assert.equal(lastBody().rootDir, "backend");
+      } finally {
+        mock.state.sourceRuntime = "node";
+      }
+    });
+    await check("as_docker turns a Node original into a Docker copy and warns about the Dockerfile", async () => {
+      const dry = parse(await call(c.render, "render_create_service", { new_name: "student-container", as_docker: true }));
+      assert.equal(dry.new_service.runtime, "docker");
+      assert.equal(dry.new_service.dockerfile_path, "./Dockerfile");
+      assert.equal(dry.new_service.docker_context, ".");
+      assert.match(dry.warnings.join(" "), /backend\/Dockerfile/);
+      const before = createdBefore();
+      const out = parse(await call(c.render, "render_create_service", { new_name: "student-container", as_docker: true, dry_run: false, confirm_name: "student-container" }));
+      assert.equal(out.created, true, JSON.stringify(out));
+      assert.equal(createdBefore(), before + 1);
+      const b = lastBody();
+      assert.equal(b.serviceDetails.runtime, "docker");
+      assert.deepEqual(b.serviceDetails.envSpecificDetails, { dockerfilePath: "./Dockerfile", dockerContext: "." });
+      assert.equal(b.rootDir, "backend");
+      assert.equal(b.serviceDetails.plan, "free");
+    });
+    await check("a prebuilt-image original is refused (not supported)", async () => {
+      mock.state.sourceRuntime = "image";
+      try {
+        const r = await call(c.render, "render_create_service", { new_name: "student-image-copy" });
+        assert.equal(r.isError, true);
+        assert.match(r.content[0].text, /prebuilt image/);
+      } finally {
+        mock.state.sourceRuntime = "node";
+      }
+    });
+
     console.log("\nstudents-mcp (MongoDB data via backend)");
     let record;
     await check("students_health", async () => {
@@ -294,18 +429,20 @@ async function waitHealthy(port) {
       assert.equal(r.database, "connected");
     });
     await check("students_add -> list -> search", async () => {
-      const added = parse(await call(c.students, "students_add", { studentId: "ST101", name: "Asha Patil", email: "asha@example.com", department: "Computer Science", semester: 5, contact: "9876543210" }));
+      const added = parse(await call(c.students, "students_add", { studentId: "ST101", name: "Asha Patil", email: "asha@example.com", department: "Computer Science", semester: 5, admissionYear: 2024, contact: "9876543210" }));
       record = added.student.record_id;
+      assert.equal(added.student.admissionYear, 2024);
       assert.equal(parse(await call(c.students, "students_list")).count, 1);
       assert.equal(parse(await call(c.students, "students_search", { query: "asha" })).count, 1);
     });
     await check("students_add validates the contact number", async () => {
-      const r = await call(c.students, "students_add", { studentId: "ST102", name: "X", email: "x@example.com", department: "IT", semester: 1, contact: "123" }).catch(e => ({ isError: true }));
+      const r = await call(c.students, "students_add", { studentId: "ST102", name: "X", email: "x@example.com", department: "IT", semester: 1, admissionYear: 2024, contact: "123" }).catch(e => ({ isError: true }));
       assert.equal(r.isError, true);
     });
     await check("students_update changes a field", async () => {
-      const r = parse(await call(c.students, "students_update", { record_id: record, semester: 6 }));
+      const r = parse(await call(c.students, "students_update", { record_id: record, semester: 6, admissionYear: 2023 }));
       assert.equal(r.student.semester, 6);
+      assert.equal(r.student.admissionYear, 2023);
     });
     await check("students_delete refuses without confirm=true", async () => {
       const r = await call(c.students, "students_delete", { record_id: record, confirm: false });

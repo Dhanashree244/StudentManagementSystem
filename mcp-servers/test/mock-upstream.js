@@ -48,7 +48,11 @@ function create() {
     vercelDeploys: [],
     backendCommit: null,
     students: [],
-    envVars: { MONGODB_URI: "x", PORT: "10000" },
+    envVars: { MONGODB_URI: "mongodb+srv://user:pw-SECRET-VALUE@cluster/db", PORT: "10000" },
+    sourcePlan: "free",
+    sourceRuntime: "node",
+    createdBodies: [],
+    createdServices: [],
     log: []
   };
 
@@ -131,9 +135,39 @@ function create() {
     }
   };
   const strip = ({ polls, ...rest }) => rest;
-  r.get("/services/srv-test", (req, res) =>
-    res.json({ id: "srv-test", name: "student-management-backend", type: "web_service", branch: "main", autoDeploy: "yes", suspended: "not_suspended", serviceDetails: { url: "https://backend.test" } })
-  );
+  const sourceService = () => ({
+    id: "srv-test", name: "student-management-backend", type: "web_service", ownerId: "wrk-test",
+    repo: "https://github.com/o/r", branch: "main", autoDeploy: "yes", rootDir: "backend",
+    suspended: "not_suspended", buildFilter: { paths: ["backend/**"], ignoredPaths: [] },
+    serviceDetails: {
+      url: "https://backend.test", runtime: state.sourceRuntime, plan: state.sourcePlan, region: "oregon",
+      healthCheckPath: "/health",
+      envSpecificDetails:
+        state.sourceRuntime === "docker"
+          ? { dockerfilePath: "./Dockerfile", dockerContext: ".", dockerCommand: "node server.js" }
+          : state.sourceRuntime === "image" ? {} : { buildCommand: "npm install", startCommand: "node server.js" }
+    }
+  });
+  r.get("/services/:id", (req, res) => {
+    const svc = req.params.id === "srv-test" ? sourceService() : state.createdServices.find(x => x.id === req.params.id);
+    svc ? res.json(svc) : res.status(404).json({ message: "service not found" });
+  });
+  r.get("/services", (req, res) => {
+    const all = [sourceService(), ...state.createdServices];
+    const list = req.query.name ? all.filter(x => x.name === req.query.name) : all;
+    res.json(list.map(service => ({ service, cursor: service.id })));
+  });
+  r.post("/services", (req, res) => {
+    state.createdBodies.push(req.body);
+    const n = state.createdServices.length + 1;
+    const service = {
+      id: `srv-copy${n}`, name: req.body.name, type: req.body.type, ownerId: req.body.ownerId,
+      repo: req.body.repo, branch: req.body.branch,
+      serviceDetails: { url: `https://${req.body.name}.onrender.com`, plan: req.body.serviceDetails.plan }
+    };
+    state.createdServices.push(service);
+    res.status(201).json({ service, deployId: `dep-new${n}` });
+  });
   r.get("/services/srv-test/deploys", (req, res) => {
     state.renderDeploys.forEach(advance);
     res.json(state.renderDeploys.slice(0, Number(req.query.limit || 20)).map(d => ({ deploy: strip(d), cursor: d.id })));

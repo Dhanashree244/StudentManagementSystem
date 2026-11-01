@@ -20,6 +20,7 @@ const fields = {
   email: z.string().email(),
   department: z.string().min(1).max(100),
   semester: z.number().int().min(1).max(12),
+  admissionYear: z.number().int().min(1990).max(2100),
   contact: z.string().regex(/^[0-9]{10}$/, "10-digit number")
 };
 
@@ -30,6 +31,7 @@ const slim = s => ({
   email: s.email,
   department: s.department,
   semester: s.semester,
+  admissionYear: s.admissionYear ?? null,
   contact: s.contact
 });
 
@@ -106,6 +108,7 @@ function register(server) {
         email: fields.email.optional(),
         department: fields.department.optional(),
         semester: fields.semester.optional(),
+        admissionYear: fields.admissionYear.optional(),
         contact: fields.contact.optional()
       }
     },

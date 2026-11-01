@@ -9,7 +9,7 @@
     "start:vercel": "node vercel-mcp.js",
     "start:render": "node render-mcp.js",
     "start:students": "node students-mcp.js",
-    "test": "node test/run-tests.js"
+    "test": "node test/run-tests.js && node test/cli-test.js"
   },
   "engines": {
     "node": ">=20"
